@@ -1,51 +1,72 @@
 import logo from './logo.svg';
 import './App.css';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { API, graphqlOperation } from '@aws-amplify/api'
 import { Auth } from "aws-amplify";
 import config from './aws-exports'
 import { subscribe } from './graphql/subscriptions'
 
-Auth.configure({
-  region: 'eu-central-1',
-  userPoolId: 'eu-central-1_29CFknuNU',
-  userPoolWebClientId: '2i1l8vc0nl3eba5h8m6t2buftr',
-  mandatorySignIn: true,
-  authenticationFlowType: 'USER_SRP_AUTH'
-})
 
-console.log(await Auth.signIn("frontend", "P@ssw0rd"));
 
-API.configure({
-  ...config,
-  Auth
-})
-const handleNotification = (notification) => {
-  console.log('New notification:', notification);
-};
+
 
 function App() {
+  const cleanupRef = useRef(null);
 
   useEffect( () => {
+    let initSubscription = async () => {
+        Auth.configure({
+          region: 'eu-central-1',
+          userPoolId: 'eu-central-1_29CFknuNU',
+          userPoolWebClientId: '2i1l8vc0nl3eba5h8m6t2buftr',
+          mandatorySignIn: true,
+          authenticationFlowType: 'USER_SRP_AUTH'
+        })
+        await Auth.signIn("frontend", "P@ssw0rd");
+        API.configure({
+          ...config,
+          Auth
+        })
+        const handleNotification = (notification) => {
+          console.log('New notification:', notification);
+        };
 
-    const subscription = API.graphql({
-        query: subscribe,
-        variables: {
-          name: "channelOne"
-        }}
-    ).subscribe({
-      error: (err) => {
-        console.log("Subscription error", JSON.stringify(err))
-        // setStatus("Disconnected :(")
-      },
-      next: (notificationData) => {
-        handleNotification(notificationData.value.data.subscribe);
-      },
-    });
+        const subscription = API.graphql({
+          query: subscribe,
+          variables: {
+            name: "channelOne"
+          }}
+        ).subscribe({
+          success: () => {
 
-    console.log("Successfully subscribed.");
+          },
+          error: (err) => {
+            console.log("Subscription error", JSON.stringify(err))
+            // setStatus("Disconnected :(")
+          },
+          next: (notificationData) => {
+            handleNotification(notificationData.value.data.subscribe);
+          },
+        });
 
-    return () => subscription.unsubscribe();
+        console.log("Successfully subscribed.");
+
+        // Set the cleanup function to the ref
+        cleanupRef.current = () => {
+          console.log('Cleanup/unsubscribe');
+          subscription.unsubscribe();
+        };
+
+      }
+
+    initSubscription();
+
+    // Return the cleanup function
+    return () => {
+      if (cleanupRef.current) {
+        cleanupRef.current();
+      }
+    };
   }, []);
 
   return (
