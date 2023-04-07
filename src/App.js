@@ -1,14 +1,10 @@
 import logo from './logo.svg';
 import './App.css';
 import { useEffect, useRef } from 'react';
-import { API, graphqlOperation } from '@aws-amplify/api'
+import { API } from '@aws-amplify/api'
 import { Auth } from "aws-amplify";
 import config from './aws-exports'
 import { subscribe } from './graphql/subscriptions'
-
-
-
-
 
 function App() {
   const cleanupRef = useRef(null);
@@ -16,13 +12,13 @@ function App() {
   useEffect( () => {
     let initSubscription = async () => {
         Auth.configure({
-          region: 'eu-central-1',
-          userPoolId: 'eu-central-1_29CFknuNU',
-          userPoolWebClientId: '2i1l8vc0nl3eba5h8m6t2buftr',
+          region: config.aws_appsync_region,
+          userPoolId: config.aws_cognito_user_pool_id,
+          userPoolWebClientId: config.aws_cognito_user_pool_client_id,
           mandatorySignIn: true,
           authenticationFlowType: 'USER_SRP_AUTH'
         })
-        await Auth.signIn("frontend", "P@ssw0rd");
+        await Auth.signIn(config.aws_cognito_username, config.aws_cognito_pass);
         API.configure({
           ...config,
           Auth
